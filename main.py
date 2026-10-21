@@ -5,22 +5,22 @@ import tkintermapview
 
 DB_FILE = "campsites.json"
 
-# starter campsites (x and y removed, now using real lat/lng)
+# starter campsites for Pictured Rocks National Lakeshore
 INITIAL_CAMPSITES = [
     {
         "id": 1,
-        "name": "Pine Ridge Camp",
-        "lat": 44.0640,
-        "lng": -121.3320,
-        "notes": "Vault toilet, shaded tent pads near trailhead.",
+        "name": "Twelvemile Beach Campground",
+        "lat": 46.6391,
+        "lng": -86.2177,
+        "notes": "Pictured Rocks National Lakeshore; situated on a high sandy plateau above Lake Superior.",
         "ratings": [5, 4]
     },
     {
         "id": 2,
-        "name": "Mirror Lake Site",
-        "lat": 44.0480,
-        "lng": -121.2980,
-        "notes": "Lakeside tent spots; pack out all trash.",
+        "name": "Hurricane River Campground",
+        "lat": 46.6730,
+        "lng": -86.1390,
+        "notes": "Located where the Hurricane River flows into Lake Superior near the Au Sable Light Station.",
         "ratings": [5, 5]
     }
 ]
@@ -52,13 +52,18 @@ class TrailPinApp:
         self.map_container = tk.Frame(self.root)
         self.map_container.pack(fill=tk.BOTH, expand=True)
 
-        # map widget
+        # real map widget (replaces the fake canvas)
         self.map_widget = tkintermapview.TkinterMapView(self.map_container, corner_radius=0)
         self.map_widget.pack(fill=tk.BOTH, expand=True)
 
-        # set starting map position (Cascade Lakes, OR) and zoom
-        self.map_widget.set_position(44.0582, -121.3153)
-        self.map_widget.set_zoom(12)
+        #  using Google Maps for fast tile rendering
+        self.map_widget.set_tile_server("https://mt0.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}&s=Ga", max_zoom=22)
+
+        self.map_widget.pack(fill=tk.BOTH, expand=True)
+
+        # set starting map position (Pictured Rocks National Lakeshore, MI) and zoom
+        self.map_widget.set_position(46.6550, -86.1800)
+        self.map_widget.set_zoom(11)
 
         # on-screen zoom and pan controls frame
         self.controls_frame = tk.Frame(self.map_container, bg="white", bd=2, relief=tk.RAISED)
