@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import messagebox
 import json
 import os
 import tkintermapview
@@ -29,7 +30,7 @@ INITIAL_CAMPSITES = [
 class TrailPinApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("TrailPin Campsite Map")
+        self.root.title("TrailPin Campsite Map — Step 3 (Plot Campsites)")
         self.root.geometry("1000x700")
 
         # load campsites from local JSON file
@@ -52,18 +53,18 @@ class TrailPinApp:
         self.map_container = tk.Frame(self.root)
         self.map_container.pack(fill=tk.BOTH, expand=True)
 
-        # real map widget (replaces the fake canvas)
+        # real map widget
         self.map_widget = tkintermapview.TkinterMapView(self.map_container, corner_radius=0)
-        self.map_widget.pack(fill=tk.BOTH, expand=True)
-
-        #  using Google Maps for fast tile rendering
         self.map_widget.set_tile_server("https://mt0.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}&s=Ga", max_zoom=22)
-
         self.map_widget.pack(fill=tk.BOTH, expand=True)
 
         # set starting map position (Pictured Rocks National Lakeshore, MI) and zoom
         self.map_widget.set_position(46.6550, -86.1800)
         self.map_widget.set_zoom(11)
+
+        # add right-click context menu to plot new campsite
+        self.map_widget.add_right_click_menu_command(label="[+] Add Campsite Here", command=self.open_add_popup,
+                                                     pass_coords=True)
 
         # on-screen zoom and pan controls frame
         self.controls_frame = tk.Frame(self.map_container, bg="white", bd=2, relief=tk.RAISED)
@@ -73,15 +74,15 @@ class TrailPinApp:
         tk.Button(self.controls_frame, text="Zoom +", width=8, command=self.zoom_in).pack(padx=4, pady=2)
         tk.Button(self.controls_frame, text="Zoom −", width=8, command=self.zoom_out).pack(padx=4, pady=2)
 
-        tk.Button(self.controls_frame, text="▲ Pan Up", width=8, command=lambda: self.pan(1, 0)).pack(padx=4, pady=1)
-        tk.Button(self.controls_frame, text="▼ Pan Down", width=8, command=lambda: self.pan(-1, 0)).pack(padx=4, pady=1)
-        tk.Button(self.controls_frame, text="◀ Pan Left", width=8, command=lambda: self.pan(0, -1)).pack(padx=4, pady=1)
-        tk.Button(self.controls_frame, text="Pan Right ▶", width=8, command=lambda: self.pan(0, 1)).pack(padx=4, pady=1)
+        tk.Button(self.controls_frame, text="▲", width=8, command=lambda: self.pan(1, 0)).pack(padx=4, pady=1)
+        tk.Button(self.controls_frame, text="▼", width=8, command=lambda: self.pan(-1, 0)).pack(padx=4, pady=1)
+        tk.Button(self.controls_frame, text="◀", width=8, command=lambda: self.pan(0, -1)).pack(padx=4, pady=1)
+        tk.Button(self.controls_frame, text="▶", width=8, command=lambda: self.pan(0, 1)).pack(padx=4, pady=1)
 
         # bottom status bar
         self.status_label = tk.Label(
             self.root,
-            text=f"Loaded {len(self.campsites)} campsites from {DB_FILE}.",
+            text=f"Loaded {len(self.campsites)} campsites | Right-click anywhere on the map to add a new campsite!",
             bg="#e2e8f0",
             fg="#1e293b",
             anchor="w",
@@ -126,10 +127,63 @@ class TrailPinApp:
                 text=f"{site['name']}\n{avg_text}"
             )
 
-        self.status_label.config(
-            text=f"Loaded {len(self.campsites)} campsites | Real map tiles active. You can zoom out and drag the map natively!"
-        )
+    # ==========================================
+    # ADD CAMPSITE POPUP (USER STORY 2)
+    # ==========================================
+    def open_add_popup(self, coords):
+        """Open a popup window to enter details for a new campsite pin."""
+        popup = tk.Toplevel(self.root)
+        popup.title("Add New Campsite Pin")
+        popup.geometry("350x250")
+        popup.grab_set()  # Lock interaction to this window until closed
 
+        tk.Label(popup, text="Campsite Name (Required):", font=("Arial", 10, "bold")).pack(pady=(10, 0))
+        name_entry = tk.Entry(popup, width=40)
+        name_entry.pack(pady=5)
+
+        tk.Label(popup, text=f"Coordinates: {coords[0]:.4f}° N, {coords[1]:.4f}° W", fg="#475569").pack(pady=5)
+
+        tk.Label(popup, text="Amenities / Notes (Optional):", font=("Arial", 10, "bold")).pack(pady=(10, 0))
+        notes_entry = tk.Entry(popup, width=40)
+        notes_entry.pack(pady=5)
+
+        # action Buttons
+        btn_frame = tk.Frame(popup)
+        btn_frame.pack(pady=15)
+
+        tk.Button(btn_frame, text="Cancel", command=popup.destroy, width=10).pack(side=tk.LEFT, padx=10)
+        tk.Button(btn_frame, text="Save Pin", bg="#16a34a", fg="white", width=10,
+                  command=lambda: self.save_new_campsite(name_entry.get(), coords[0], coords[1], notes_entry.get(),
+                                                         popup)).pack(side=tk.LEFT, padx=10)
+
+        name_entry.focus()
+
+    def save_new_campsite(self, name, lat, lng, notes, popup):
+        """Save the new campsite to the database and redraw the map."""
+        if not name.strip():
+            messagebox.showwarning("Missing Info", "Please enter a Campsite Name.", parent=popup)
+            return
+
+        new_site = {
+            "id": len(self.campsites) + 1,
+            "name": name.strip(),
+            "lat": lat,
+            "lng": lng,
+            "notes": notes.strip(),
+            "ratings": []
+        }
+
+        self.campsites.append(new_site)
+        self.save_database(self.campsites)
+        self.draw_map()
+
+        self.status_label.config(
+            text=f"Saved '{new_site['name']}' to local database. Total sites: {len(self.campsites)}")
+        popup.destroy()
+
+    # ==========================================
+    # MAP NAVIGATION CONTROLS
+    # ==========================================
     def zoom_in(self):
         """zoom in map view"""
         self.map_widget.set_zoom(self.map_widget.zoom + 1)
@@ -140,13 +194,10 @@ class TrailPinApp:
 
     def pan(self, d_lat, d_lng):
         """pan map via control buttons"""
-        # Calculate a shift delta based on current zoom level
         current_pos = self.map_widget.get_position()
         delta = 10 / (2 ** self.map_widget.zoom)
-
         new_lat = current_pos[0] + (d_lat * delta * 5)
         new_lng = current_pos[1] + (d_lng * delta * 10)
-
         self.map_widget.set_position(new_lat, new_lng)
 
 
