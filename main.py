@@ -30,7 +30,7 @@ INITIAL_CAMPSITES = [
 class TrailPinApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("TrailPin Campsite Map — Step 3 (Plot Campsites)")
+        self.root.title("TrailPin Campsite Map — Step 4 (Rate Campsites)")
         self.root.geometry("1000x700")
 
         # load campsites from local JSON file
@@ -82,7 +82,7 @@ class TrailPinApp:
         # bottom status bar
         self.status_label = tk.Label(
             self.root,
-            text=f"Loaded {len(self.campsites)} campsites | Right-click anywhere on the map to add a new campsite!",
+            text=f"Loaded {len(self.campsites)} campsites | Click an existing pin to Rate it, or Right-click to Add!",
             bg="#e2e8f0",
             fg="#1e293b",
             anchor="w",
@@ -121,11 +121,20 @@ class TrailPinApp:
         # draw each campsite pin from our database
         for site in self.campsites:
             avg_text = self.get_average_rating(site["ratings"])
-            self.map_widget.set_marker(
+
+            # add command to marker so clicking it opens the Rating Popup
+            marker = self.map_widget.set_marker(
                 site["lat"],
                 site["lng"],
-                text=f"{site['name']}\n{avg_text}"
+                text=f"{site['name']}\n{avg_text}",
+                command=self.marker_click_handler
             )
+            # attach the site dictionary to the marker object so we know which one was clicked
+            marker.site_data = site
+
+    def marker_click_handler(self, marker):
+        """Handler triggered when a map marker is clicked."""
+        self.open_rate_popup(marker.site_data)
 
     # ==========================================
     # ADD CAMPSITE POPUP (USER STORY 2)
@@ -180,6 +189,67 @@ class TrailPinApp:
         self.status_label.config(
             text=f"Saved '{new_site['name']}' to local database. Total sites: {len(self.campsites)}")
         popup.destroy()
+
+    # ==========================================
+    # RATE CAMPSITE POPUP (USER STORY 3)
+    # ==========================================
+    def open_rate_popup(self, site):
+        """Open a popup window to rate an existing campsite."""
+        self.rate_popup = tk.Toplevel(self.root)
+        self.rate_popup.title("Rate Campsite")
+        self.rate_popup.geometry("350x250")
+        self.rate_popup.grab_set()
+
+        self.current_rating = tk.IntVar(value=5)  # Default to 5 stars
+
+        # header info
+        tk.Label(self.rate_popup, text=site["name"], font=("Arial", 12, "bold"), fg="#14532d").pack(pady=(10, 0))
+        avg_text = self.get_average_rating(site["ratings"])
+        tk.Label(self.rate_popup, text=f"Current Average: {avg_text}", fg="#b45309").pack(pady=5)
+
+        tk.Label(self.rate_popup, text="Select 1–5 Stars:", font=("Arial", 10, "bold")).pack(pady=(10, 5))
+
+        # star selection frame
+        star_frame = tk.Frame(self.rate_popup)
+        star_frame.pack(pady=5)
+
+        for i in range(1, 6):
+            tk.Radiobutton(
+                star_frame, text=f"{i} ★", variable=self.current_rating, value=i,
+                indicatoron=0, width=5, bg="#fef08a", selectcolor="#ca8a04", font=("Arial", 10, "bold")
+            ).pack(side=tk.LEFT, padx=2)
+
+        tk.Label(self.rate_popup, text="Hint: You can press keys [1]-[5] and [Enter]", fg="#1d4ed8",
+                 font=("Arial", 8)).pack()
+
+        # action buttons
+        btn_frame = tk.Frame(self.rate_popup)
+        btn_frame.pack(pady=15)
+
+        tk.Button(btn_frame, text="Cancel (Esc)", command=self.rate_popup.destroy, width=12).pack(side=tk.LEFT, padx=10)
+        tk.Button(btn_frame, text="Submit (Enter)", bg="#16a34a", fg="white", width=12,
+                  command=lambda: self.submit_rating(site, self.current_rating.get())).pack(side=tk.LEFT, padx=10)
+
+        # keyboard navigation bindings (Usability Requirement & IH#7)
+        self.rate_popup.bind("<Key-1>", lambda e: self.current_rating.set(1))
+        self.rate_popup.bind("<Key-2>", lambda e: self.current_rating.set(2))
+        self.rate_popup.bind("<Key-3>", lambda e: self.current_rating.set(3))
+        self.rate_popup.bind("<Key-4>", lambda e: self.current_rating.set(4))
+        self.rate_popup.bind("<Key-5>", lambda e: self.current_rating.set(5))
+        self.rate_popup.bind("<Return>", lambda e: self.submit_rating(site, self.current_rating.get()))
+        self.rate_popup.bind("<Escape>", lambda e: self.rate_popup.destroy())
+
+        self.rate_popup.focus_set()
+
+    def submit_rating(self, site, stars):
+        """Save the new rating to the database and recalculate."""
+        site["ratings"].append(stars)
+        self.save_database(self.campsites)
+        self.draw_map()
+
+        new_avg = self.get_average_rating(site["ratings"])
+        self.status_label.config(text=f"✓ Rating Saved! {site['name']} is now {new_avg}.")
+        self.rate_popup.destroy()
 
     # ==========================================
     # MAP NAVIGATION CONTROLS
