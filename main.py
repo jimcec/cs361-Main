@@ -179,7 +179,6 @@ class TrailPinApp:
     def draw_map(self):
         self.map_widget.delete_all_marker()
         for site in self.campsites:
-            # Handle old databases seamlessly if they still use 'ratings' instead of 'reviews'
             if "reviews" not in site:
                 site["reviews"] = [{"stars": r, "comment": ""} for r in site.get("ratings", [])]
 
@@ -262,7 +261,7 @@ class TrailPinApp:
     def open_rate_popup(self, site):
         self.rate_popup = tk.Toplevel(self.root)
         self.rate_popup.title("Rate & Review Campsite")
-        self.rate_popup.geometry("380x520")  # Slightly taller to support expanding logic
+        self.rate_popup.geometry("380x520")
         self.rate_popup.grab_set()
 
         self.current_rating = tk.IntVar(value=5)
@@ -275,7 +274,7 @@ class TrailPinApp:
         avg_text = self.get_average_rating(site["reviews"])
         tk.Label(self.rate_popup, text=f"Current Average: {avg_text}", fg="#b45309").pack()
 
-        # Expand/Collapse past reviews (Progressive Disclosure / IH#3)
+        # Expand/Collapse past reviews
         if site["reviews"]:
             self.reviews_expanded = False
             reviews_container = tk.Frame(self.rate_popup)
@@ -329,17 +328,27 @@ class TrailPinApp:
                   command=lambda: self.submit_rating(site, self.current_rating.get(), self.review_entry.get())).pack(
             side=tk.LEFT, padx=5)
 
-        # Keyboard bindings
-        self.rate_popup.bind("<Key-1>", lambda e: [self.current_rating.set(1), self.update_live_preview(site)])
-        self.rate_popup.bind("<Key-2>", lambda e: [self.current_rating.set(2), self.update_live_preview(site)])
-        self.rate_popup.bind("<Key-3>", lambda e: [self.current_rating.set(3), self.update_live_preview(site)])
-        self.rate_popup.bind("<Key-4>", lambda e: [self.current_rating.set(4), self.update_live_preview(site)])
-        self.rate_popup.bind("<Key-5>", lambda e: [self.current_rating.set(5), self.update_live_preview(site)])
+        # Smart Keyboard bindings - calls the helper method to check if user is typing
+        self.rate_popup.bind("<Key-1>", lambda e: self.handle_star_shortcut(site, 1))
+        self.rate_popup.bind("<Key-2>", lambda e: self.handle_star_shortcut(site, 2))
+        self.rate_popup.bind("<Key-3>", lambda e: self.handle_star_shortcut(site, 3))
+        self.rate_popup.bind("<Key-4>", lambda e: self.handle_star_shortcut(site, 4))
+        self.rate_popup.bind("<Key-5>", lambda e: self.handle_star_shortcut(site, 5))
         self.rate_popup.bind("<Return>",
                              lambda e: self.submit_rating(site, self.current_rating.get(), self.review_entry.get()))
         self.rate_popup.bind("<Escape>", lambda e: self.rate_popup.destroy())
 
-        self.review_entry.focus()
+        # Fix: Focus on the popup window itself, NOT the text entry, so shortcuts work instantly
+        self.rate_popup.focus_set()
+
+    def handle_star_shortcut(self, site, stars):
+        """Handle 1-5 shortcuts, BUT ignore them if the user is typing in the review box."""
+        # If the text box has active focus, let the user type numbers normally!
+        if self.rate_popup.focus_get() == self.review_entry:
+            return
+
+        self.current_rating.set(stars)
+        self.update_live_preview(site)
 
     def toggle_reviews_view(self):
         """Toggle the visibility of the past reviews (Progressive Disclosure / IH#3)."""
@@ -392,7 +401,6 @@ class TrailPinApp:
     def reset_map(self):
         self.map_widget.set_position(46.6550, -86.1800)
         self.map_widget.set_zoom(11)
-
 
 
 if __name__ == "__main__":
