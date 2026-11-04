@@ -394,6 +394,7 @@ class TrailPinApp:
         self.map_widget.set_zoom(11)
 
 
+
 if __name__ == "__main__":
     root = tk.Tk()
     app = TrailPinApp(root)
