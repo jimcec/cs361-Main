@@ -36,7 +36,7 @@ INITIAL_CAMPSITES = [
 class TrailPinApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("TrailPin Campsite Map — Final Version (Expandable Reviews)")
+        self.root.title("TrailPin Campsite Map")
         self.root.geometry("1000x750")
 
         # load campsites from local JSON file
