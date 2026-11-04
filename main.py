@@ -74,10 +74,10 @@ class TrailPinApp:
         tk.Label(self.info_frame, text="★ Why Plot & Rate Campsites? (Feature Benefits & Costs)",
                  font=("Arial", 10, "bold"), bg="#eff6ff", fg="#1e3a8a").pack(anchor="w")
         tk.Label(self.info_frame,
-                 text="• Benefit (IH#1): Save unlisted campsites & view community star averages to plan trips faster.",
+                 text="• Benefit: Save unlisted campsites & view community star averages to plan trips faster.",
                  bg="#eff6ff", fg="#1e40af").pack(anchor="w")
         tk.Label(self.info_frame,
-                 text="• Cost (IH#2): Takes ~15s, saves ~1 KB to local DB, and is visible on map (Undoable anytime).",
+                 text="• Cost: Takes ~15s, saves ~1 KB to local DB, and is visible on map (Undoable anytime).",
                  bg="#eff6ff", fg="#9a3412").pack(anchor="w")
 
         # map container frame
