@@ -36,7 +36,7 @@ INITIAL_CAMPSITES = [
 class TrailPinApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("TrailPin Campsite Map — Final Version (with Reviews)")
+        self.root.title("TrailPin Campsite Map — Final Version (Expandable Reviews)")
         self.root.geometry("1000x750")
 
         # load campsites from local JSON file
@@ -262,7 +262,7 @@ class TrailPinApp:
     def open_rate_popup(self, site):
         self.rate_popup = tk.Toplevel(self.root)
         self.rate_popup.title("Rate & Review Campsite")
-        self.rate_popup.geometry("380x480")
+        self.rate_popup.geometry("380x520")  # Slightly taller to support expanding logic
         self.rate_popup.grab_set()
 
         self.current_rating = tk.IntVar(value=5)
@@ -275,17 +275,23 @@ class TrailPinApp:
         avg_text = self.get_average_rating(site["reviews"])
         tk.Label(self.rate_popup, text=f"Current Average: {avg_text}", fg="#b45309").pack()
 
-        # Show recent reviews (Progressive Disclosure / IH#3)
+        # Expand/Collapse past reviews (Progressive Disclosure / IH#3)
         if site["reviews"]:
-            reviews_frame = tk.Frame(self.rate_popup, bg="#f8fafc", bd=1, relief=tk.SOLID)
-            reviews_frame.pack(fill=tk.X, padx=15, pady=5)
-            tk.Label(reviews_frame, text="▾ Past Reviews (Showing latest 2):", font=("Arial", 8, "bold"), bg="#f8fafc",
-                     fg="#1e3a8a").pack(anchor="w", padx=5)
-            for r in site["reviews"][-2:]:
+            self.reviews_expanded = False
+            reviews_container = tk.Frame(self.rate_popup)
+            reviews_container.pack(fill=tk.X, padx=15, pady=5)
+
+            self.toggle_btn = tk.Button(reviews_container, text="► Show Past Reviews", font=("Arial", 9, "bold"),
+                                        fg="#1e3a8a", relief=tk.FLAT, command=self.toggle_reviews_view)
+            self.toggle_btn.pack(anchor="w")
+
+            self.inner_reviews_frame = tk.Frame(reviews_container, bg="#f8fafc", bd=1, relief=tk.SOLID)
+
+            for r in site["reviews"][-3:]:
                 comment = r.get("comment", "")
                 display_comment = f'"{comment}"' if comment else "(Star rating only)"
-                tk.Label(reviews_frame, text=f"★ {r['stars']}/5 — {display_comment}", font=("Arial", 8), bg="#f8fafc",
-                         fg="#475569").pack(anchor="w", padx=5)
+                tk.Label(self.inner_reviews_frame, text=f"★ {r['stars']}/5 — {display_comment}", font=("Arial", 8),
+                         bg="#f8fafc", fg="#475569", wraplength=340, justify=tk.LEFT).pack(anchor="w", padx=5, pady=2)
 
         tk.Label(self.rate_popup, text="Select 1–5 Stars:", font=("Arial", 10, "bold")).pack(pady=(10, 0))
 
@@ -334,6 +340,17 @@ class TrailPinApp:
         self.rate_popup.bind("<Escape>", lambda e: self.rate_popup.destroy())
 
         self.review_entry.focus()
+
+    def toggle_reviews_view(self):
+        """Toggle the visibility of the past reviews (Progressive Disclosure / IH#3)."""
+        if self.reviews_expanded:
+            self.inner_reviews_frame.pack_forget()
+            self.toggle_btn.config(text="► Show Past Reviews")
+            self.reviews_expanded = False
+        else:
+            self.inner_reviews_frame.pack(fill=tk.X, pady=5)
+            self.toggle_btn.config(text="▼ Hide Past Reviews")
+            self.reviews_expanded = True
 
     def update_live_preview(self, site):
         test_stars = [r["stars"] for r in site["reviews"]] + [self.current_rating.get()]
